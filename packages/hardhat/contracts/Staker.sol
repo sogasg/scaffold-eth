@@ -6,11 +6,11 @@ interface ExternalExampleContract {
 
 contract Staker {
 	mapping(address => uint256) public balances;
-	uint256 public constant threshold = 1 ether;
+	uint256 public constant threshold = 0.001 ether;
 	uint256 public deadline = now + 30 seconds;
 	address immutable externalExampleContract;
-	bool disableAndActivateWithdrawals = false;
-	bool firstRun = true;
+	bool public disabledAndWithdrawalsActivated = false;
+	bool public firstRun = true;
 
 	event Stake(address staker, uint256 amount);
 
@@ -29,12 +29,12 @@ contract Staker {
 	}
 
 	modifier contractIsActive() {
-		require(!disableAndActivateWithdrawals, "contract is disabled");
+		require(!disabledAndWithdrawalsActivated, "contract is disabled");
 		_;
 	}
 
 	modifier contractIsDisabled() {
-		require(disableAndActivateWithdrawals, "contract is active");
+		require(disabledAndWithdrawalsActivated, "contract is active");
 		_;
 	}
 
@@ -50,7 +50,7 @@ contract Staker {
 				value: address(this).balance
 			}();
 		} else if (firstRun) {
-			disableAndActivateWithdrawals = true;
+			disabledAndWithdrawalsActivated = true;
 		}
 		firstRun = false;
 	}
