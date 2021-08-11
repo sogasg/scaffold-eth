@@ -278,7 +278,7 @@ function App(props) {
                   However, if the threshold is not reached in the bootstrapping phase, the contract is disabled, and you
                   can withdraw your stake.
                 </Typography.Text>
-                {timeLeft < 0 ? (
+                {timeLeft != null && timeLeft.gt(0) ? (
                   <div style={{ padding: 8, marginTop: 32 }}>
                     <div>Time left for bootstrapping phase:</div>
                     {timeLeft && humanizeDuration(timeLeft.toNumber() * 1000)}
@@ -299,8 +299,8 @@ function App(props) {
                   </div>
                 ) : (
                   <>
-                    {(stakerContractBalance > threshold && timeLeft == 0) ||
-                    (timeLeft == 0 && firstExecution == true) ? (
+                    {((stakerContractBalance != null && threshold != null && timeLeft != null && stakerContractBalance.gt(threshold) && timeLeft.eq(0))) ||
+                    (timeLeft != null && timeLeft.eq(0) && firstExecution == true) ? (
                       <div style={{ padding: 8 }}>
                         <Button
                           type={"default"}
