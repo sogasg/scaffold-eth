@@ -1,13 +1,13 @@
 import WalletConnectProvider from "@walletconnect/web3-provider";
 //import Torus from "@toruslabs/torus-embed"
 import WalletLink from "walletlink";
-import { Alert, Button, Col, Menu, Row } from "antd";
+import { Alert, Button, Col, Menu, Row, List, Typography, Input } from "antd";
 import "antd/dist/antd.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
-import { Account, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
+import { Account, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch, Address, BytesStringInput } from "./components";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
@@ -195,11 +195,16 @@ function App(props) {
     "0x34aA3F359A9D614239015126635CE7732c18fDF3",
   ]);
 
+
+
   // keep track of a variable from the contract in the local React state:
   const purpose = useContractReader(readContracts, "YourContract", "purpose");
 
   // 📟 Listen for broadcast events
   const setPurposeEvents = useEventListener(readContracts, "YourContract", "SetPurpose", localProvider, 1);
+  const commitEvents = useEventListener(readContracts, "YourContract", "CommitHash", localProvider, 1);
+  const revealEvents = useEventListener(readContracts, "YourContract", "RevealHash", localProvider, 1);
+
 
   /*
   const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
@@ -339,6 +344,12 @@ function App(props) {
     }
   }, [loadWeb3Modal]);
 
+  const [ hashData, setHashData ] = useState("");
+  const [ commitData, setCommitData ] = useState("");
+  const [ commitBlock, setCommitBlock ] = useState(0);
+  const [ revealData, setRevealData ] = useState("");
+  const hash = useContractReader(readContracts,"YourContract", "getHash", [hashData])
+
   const [route, setRoute] = useState();
   useEffect(() => {
     setRoute(window.location.pathname);
@@ -447,6 +458,75 @@ function App(props) {
               provider={localProvider}
               address={address}
               blockExplorer={blockExplorer}
+            />
+            <BytesStringInput
+              autofocus
+              // value={hashData}
+              placeholder="Enter value..."
+              onChange={value => {
+                setHashData(value);
+            }}
+            />
+            <Typography.Text copyable={{ text: hash }}> {hash} </Typography.Text>
+            <Input 
+              onChange={
+                async e => {
+                  setCommitData(e.target.value);
+            }}/>
+            <Input 
+              onChange={
+                async e => {
+                  setCommitBlock(e.target.value);
+            }}/>
+            <Button onClick={()=>{
+              tx( writeContracts.YourContract.commit(commitData, commitBlock ))
+            }}> 
+              Commit
+            </Button>
+            <Input 
+              onChange={
+                async e => {
+                  setRevealData(e.target.value);
+            }}/>
+            <Button onClick={()=>{
+              tx( writeContracts.YourContract.reveal(revealData ))
+            }}> 
+              Reveal
+            </Button>
+
+
+            <List
+              bordered
+              dataSource={commitEvents}
+              renderItem={(item) => {
+                  return (
+                  <List.Item>
+                      <Address
+                          value={item.sender}
+                          ensProvider={mainnetProvider}
+                          fontSize={16}
+                      />
+                      {item.dataHash}
+                  </List.Item>
+                  )
+              }}
+            />
+            <List
+              bordered
+              dataSource={revealEvents}
+              renderItem={(item) => {
+                  return (
+                  <List.Item>
+                      <Address
+                          value={item.sender}
+                          ensProvider={mainnetProvider}
+                          fontSize={16}
+                      />
+                      {item.dataHash}
+                      <h4>Random number: {item.random}</h4>
+                  </List.Item>
+                  )
+              }}
             />
           </Route>
           <Route path="/hints">
