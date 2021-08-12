@@ -22,7 +22,8 @@ contract Vendor is Ownable {
 
   function sellTokens(uint256 amount) external {
     yourToken.transferFrom(msg.sender, address(this), amount);
-    emit BuyTokens(address(this), msg.value, amount);
+    uint256 ethAmount = amount/tokensPerEth;
+    payable(msg.sender).transfer(ethAmount);
   }
 
   function withdraw() external onlyOwner{

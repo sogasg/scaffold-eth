@@ -13,6 +13,7 @@ import { Transactor } from "./helpers";
 import { formatEther, parseEther } from "@ethersproject/units";
 import { Hints, ExampleUI, Subgraph } from "./views"
 import { INFURA_ID, DAI_ADDRESS, DAI_ABI, NETWORK, NETWORKS } from "./constants";
+import { BigNumber } from "ethers";
 const humanizeDuration = require("humanize-duration");
 /*
     Welcome to 🏗 scaffold-eth !
@@ -125,6 +126,8 @@ function App(props) {
   const tokensPerEth = useContractReader(readContracts, "Vendor", "tokensPerEth")
   console.log("🏦 tokensPerEth:", tokensPerEth ? tokensPerEth.toString() : '...')
 
+  const yourTokenAllowanceForVendor = useContractReader(readContracts, "YourToken", "allowance", [ address, vendorAddress ])
+  console.log("yourTokenAllowanceForVendor:", yourTokenAllowanceForVendor ? formatEther(yourTokenAllowanceForVendor) : '...')
 
   // const complete = useContractReader(readContracts,"ExampleExternalContract", "completed")
   // console.log("✅ complete:",complete)
@@ -211,9 +214,13 @@ function App(props) {
   console.log("📟 buyTokensEvents:",buyTokensEvents)
 
   const [ tokenBuyAmount, setTokenBuyAmount ] = useState()
+  const [ tokenSellAmount, setTokenSellAmount ] = useState()
 
   const ethCostToPurchaseTokens = tokenBuyAmount && tokensPerEth &&  parseEther(""+(tokenBuyAmount / parseFloat(tokensPerEth)))
   console.log("ethCostToPurchaseTokens:",ethCostToPurchaseTokens)
+
+  const tokenCostToPurchaseEth = tokenSellAmount && tokensPerEth &&  "" + tokenSellAmount + "000000000000000000"
+  console.log("tokenCostToPurchaseEth:",tokenCostToPurchaseEth)
 
   const [ tokenSendToAddress, setTokenSendToAddress ] = useState()
   const [ tokenSendAmount, setTokenSendAmount ] = useState()
@@ -316,6 +323,34 @@ function App(props) {
             </Card>
           </div>
 
+          <div style={{padding:8, marginTop: 32 ,width: 300, margin:"auto" }}>
+            <Card title="Sell Tokens" extra={<a href="#">code</a>} >
+
+              <div style={{padding:8}}>
+                {tokensPerEth && tokensPerEth.toNumber()} tokens per ETH
+              </div>
+
+              <div style={{padding:8}}>
+                <Input
+                  style={{textAlign:"center"}}
+                  placeholder={"amount of tokens to sell"}
+                  value={tokenSellAmount}
+                  onChange={(e)=>{setTokenSellAmount(e.target.value)}}
+                />
+              </div>
+
+              <div style={{padding:8}}>
+                {yourTokenAllowanceForVendor && tokenSellAmount && formatEther(yourTokenAllowanceForVendor) < tokenSellAmount ? 
+                <Button type={"primary"} loading={buying} onClick={async ()=>{
+                    await tx( writeContracts.YourToken.approve(vendorAddress, tokenCostToPurchaseEth ,{}))
+                }}>Approve</Button> :
+                <Button type={"primary"} loading={buying} onClick={async ()=>{
+                  await tx( writeContracts.Vendor.sellTokens(tokenCostToPurchaseEth ,{}) )
+                }}>Sell Tokens</Button> }
+              </div>
+
+            </Card>
+          </div>
 
 
 
