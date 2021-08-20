@@ -217,7 +217,9 @@ export default function AdminView({ userSigner, address, mainnetProvider, localP
                     }
 
                     const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
+                    // TODO: handle the nonce in a way that makes it possible to propose multiple transactions
                     const nonce = await safeSdk.getNonce()
+                    // TODO: make it possible to create longer the 32 bytes clams by publishing to IPFS and put the hash in the data instead
                     const partialTx = {
                       to,
                       data,
