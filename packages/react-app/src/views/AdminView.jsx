@@ -50,7 +50,7 @@ export default function AdminView({
 
   usePoller(async () => {
     if(safeAddress){
-
+      setSafeAddress(ethers.utils.getAddress(safeAddress))
       try{
         if(ethAdapter){
           const contract = await ethAdapter.getSafeContract(safeAddress)
@@ -124,7 +124,7 @@ export default function AdminView({
           const safeAccountConfig = { owners: OWNERS, threshold: THRESHOLD }
           const safe = await safeFactory.deploySafe(safeAccountConfig)
 
-          setSafeAddress(safe.getAddress())
+          setSafeAddress(ethers.utils.getAddress(safe.getAddress()))
           setDeploying(false)
 
           console.log("SAFE",safe,safe.getAddress())
@@ -137,7 +137,7 @@ export default function AdminView({
           if(ethers.utils.isAddress(addr)){
             console.log("addr!",addr)
 
-            setSafeAddress(addr)
+            setSafeAddress(ethers.utils.getAddress(addr))
           }
         }}/>
       </div>
