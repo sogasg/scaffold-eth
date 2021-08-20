@@ -21,11 +21,11 @@ export default function Welcome() {
         />
         <Step
           title="Evaluation"
-          description="The evaluators check if it has happened and clicks the Yes or No-button."
+          description="The evaluators open the Evaluator UI and verify the claim if it's true."
           status="process"
         />
         <Step
-          title="PaymentExecution"
+          title="Payment execution"
           description="Once/if the threshold is met, the transaction can be executed, and the builder will be paid."
           status="process"
         />

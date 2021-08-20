@@ -425,18 +425,18 @@ function App(props) {
               userSigner={userSigner}
               mainnetProvider={mainnetProvider}
               localProvider={localProvider}
-              yourLocalBalance={yourLocalBalance}
               price={price}
-              tx={tx}
-              writeContracts={writeContracts}
-              readContracts={readContracts}
-              purpose={purpose}
               setPurposeEvents={setPurposeEvents}
               blockExplorer={blockExplorer}
             />
           </Route>
           <Route path="/evaluator">
-            <EvaluatorView/>
+            <EvaluatorView
+              address={address}
+              userSigner={userSigner}
+              mainnetProvider={mainnetProvider}
+              blockExplorer={blockExplorer}
+            />
           </Route> 
         </Switch>
       </BrowserRouter>
