@@ -1,11 +1,12 @@
-import { Button, Card, DatePicker, Divider, Input, List, Progress, Slider, Spin, Switch } from "antd";
-import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import Safe, { EthersAdapter, SafeFactory, SafeTransaction, TransactionOptions } from '@gnosis.pm/safe-core-sdk'
-import SafeServiceClient from '@gnosis.pm/safe-service-client'
-import { Address, Balance, EtherInput, AddressInput } from "../components";
-import { usePoller, useLocalStorage, useBalance } from "../hooks";
-import {EthSignSignature}  from './EthSignSignature'
+import { Button, Card, DatePicker, Divider, Input, List, Progress, Slider, Spin, Switch, InputNumber, Form } from "antd"
+import React, { useState, useEffect } from "react"
+import { ethers } from "ethers"
+import Safe, { EthersAdapter, SafeFactory, SafeTransaction, TransactionOptions } from "@gnosis.pm/safe-core-sdk"
+import SafeServiceClient from "@gnosis.pm/safe-service-client"
+import { Address, Balance, EtherInput, AddressInput } from "../components"
+import { usePoller, useLocalStorage, useBalance } from "../hooks"
+import { EthSignSignature } from "./EthSignSignature"
+
 export default function AdminView({
   purpose,
   userSigner,
@@ -19,155 +20,179 @@ export default function AdminView({
   writeContracts,
   blockExplorer,
 }) {
-  const [to, setTo] = useState('')
+  const [to, setTo] = useState("")
   const [currentThreshold, setCurrentThreshold] = useState([])
   const [threshold, setThreshold] = useState(0)
   const [owners, setOwners] = useState([])
   const [transactions, setTransactions] = useState([])
   const [value, setValue] = useState(0)
-  const [selector, setSelector] = useState('')
+  const [selector, setSelector] = useState("")
   const [params, setParams] = useState([])
-  const [data, setData] = useState('0x0000000000000000000000000000000000000000')
-
-  const OWNERS = ["0xCF3eBBCbFb77571145c86Cc39281b9433CD83Cd9", "0xD028d504316FEc029CFa36bdc3A8f053F6E5a6e4"]
-
-  const THRESHOLD = 2
+  const [data, setData] = useState("0x0000000000000000000000000000000000000000")
+  const [newSafeOwners, setSafeNewOwners] = useState([])
+  const [newSafeThreshold, setNewSafeThreshold] = useState(2)
 
   const [safeAddress, setSafeAddress] = useLocalStorage("deployedSafe")
 
-  const serviceClient = new SafeServiceClient('https://safe-transaction.rinkeby.gnosis.io/')
+  const serviceClient = new SafeServiceClient("https://safe-transaction.rinkeby.gnosis.io/")
 
-  const [ deploying, setDeploying ] = useState()
+  const [deploying, setDeploying] = useState()
 
-  const safeBalance = useBalance(localProvider, safeAddress);
+  const safeBalance = useBalance(localProvider, safeAddress)
 
-  const [ ethAdapter, setEthAdapter ] = useState()
+  const [ethAdapter, setEthAdapter] = useState()
   useEffect(async () => {
-    if(userSigner){
+    if (userSigner) {
       setEthAdapter(new EthersAdapter({ ethers, signer: userSigner }))
     }
-  },[ userSigner ]);
+  }, [userSigner])
 
   usePoller(async () => {
-    if(safeAddress){
+    if (safeAddress) {
       setSafeAddress(ethers.utils.getAddress(safeAddress))
-      try{
-        if(ethAdapter){
+      try {
+        if (ethAdapter) {
           const contract = await ethAdapter.getSafeContract(safeAddress)
-          const owners = await contract.getOwners();
-          const threshold = await contract.getThreshold();
+          const owners = await contract.getOwners()
+          const threshold = await contract.getThreshold()
           setOwners(owners)
           setThreshold(threshold)
-          console.log("owners",owners,"threshold",threshold)
+          console.log("owners", owners, "threshold", threshold)
         }
 
-
-        console.log("CHECKING TRANSACTIONS....",safeAddress)
+        console.log("CHECKING TRANSACTIONS....", safeAddress)
         const transactions = await serviceClient.getPendingTransactions(safeAddress)
         //console.log("transactions",transactions)
-        const currentThreshold = [];
+        const currentThreshold = []
         for (let i = 0; i < transactions.results.length; i++) {
-          const signers = [];
+          const signers = []
           currentThreshold.push(transactions.results[i].confirmations.length)
-          for (let j = 0; j < transactions.results[i].confirmations.length; j ++) {
+          for (let j = 0; j < transactions.results[i].confirmations.length; j++) {
             signers.push(transactions.results[i].confirmations[j].owner)
           }
-          transactions.results[i].signers = signers;
+          transactions.results[i].signers = signers
         }
 
         setCurrentThreshold(currentThreshold)
         setTransactions(transactions.results)
-      }catch(e){
-        console.log("ERROR POLLING FROM SAFE:",e)
+      } catch (e) {
+        console.log("ERROR POLLING FROM SAFE:", e)
       }
     }
-  },15000);
-
-
+  }, 15000)
 
   let safeInfo
-  if(safeAddress){
+  if (safeAddress) {
     safeInfo = (
       <div>
         <Address value={safeAddress} ensProvider={mainnetProvider} blockExplorer={blockExplorer} />
         <Balance value={safeBalance} price={price} />
 
-        <div style={{padding:8}}>
-        {owners?(
-          <>
-            <b>Signers:</b>
-            <List
-              bordered
-              dataSource={owners}
-              renderItem={item => {
-                return (
-                  <List.Item key={item + "_ownerEntry"}>
-                    <Address address={item} ensProvider={mainnetProvider} fontSize={12} />
-                  </List.Item>
-                );
-              }}
-            />
-          </>
-        ):<Spin/>}
-
+        <div style={{ padding: 8 }}>
+          {owners ? (
+            <>
+              <b>Evaluators:</b>
+              <List
+                bordered
+                dataSource={owners}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item + "_ownerEntry"}>
+                      <Address address={item} ensProvider={mainnetProvider} fontSize={12} />
+                    </List.Item>
+                  )
+                }}
+              />
+            </>
+          ) : (
+            <Spin />
+          )}
         </div>
       </div>
     )
-  }else{
+  } else {
     safeInfo = (
-      <div style={{padding:32}}>
-        <Button loading={deploying} onClick={async ()=>{
+      <Form style={{ marginBottom: 12 }}>
+        <Form.Item label="Evaluators">
+          <Input
+            placeholder="Enter evaluators separated by ,"
+            style={{ marginBottom: 12 }}
+            onChange={async e => {
+              setSafeNewOwners(e.target.value.split(","))
+            }}
+          />
+        </Form.Item>
+        <Form.Item label="Threshold">
+          <InputNumber
+            placeholder="Enter threshold"
+            style={{ width: "100%" }}
+            onChange={async number => {
+              setNewSafeThreshold(number)
+            }}
+          />
+        </Form.Item>
+        <Form.Item>
+          <Button
+            loading={deploying}
+            onClick={async () => {
+              setDeploying(true)
 
-          setDeploying(true)
+              const safeFactory = await SafeFactory.create({ ethAdapter })
+              const safeAccountConfig = { owners: newSafeOwners, threshold: newSafeThreshold }
+              const safe = await safeFactory.deploySafe(safeAccountConfig)
 
-          const safeFactory = await SafeFactory.create({ ethAdapter })
-          const safeAccountConfig = { owners: OWNERS, threshold: THRESHOLD }
-          const safe = await safeFactory.deploySafe(safeAccountConfig)
+              setSafeAddress(ethers.utils.getAddress(safe.getAddress()))
+              setDeploying(false)
 
-          setSafeAddress(ethers.utils.getAddress(safe.getAddress()))
-          setDeploying(false)
+              console.log("SAFE", safe, safe.getAddress())
+            }}
+            type={"primary"}
+          >
+            DEPLOY SAFE
+          </Button>
+        </Form.Item>
+        <Form.Item label=" or enter existing address: ">
+          <AddressInput
+            ensProvider={mainnetProvider}
+            onChange={addr => {
+              if (ethers.utils.isAddress(addr)) {
+                console.log("addr!", addr)
 
-          console.log("SAFE",safe,safe.getAddress())
-
-        }} type={"primary"} >
-          DEPLOY SAFE
-        </Button>
-        <div> or enter existing address: </div>
-        <AddressInput ensProvider={mainnetProvider} onChange={(addr)=>{
-          if(ethers.utils.isAddress(addr)){
-            console.log("addr!",addr)
-
-            setSafeAddress(ethers.utils.getAddress(addr))
-          }
-        }}/>
-      </div>
+                setSafeAddress(ethers.utils.getAddress(addr))
+              }
+            }}
+          />
+        </Form.Item>
+      </Form>
     )
   }
-
-
 
   return (
     <div>
       <div style={{ border: "1px solid #cccccc", padding: 16, width: 400, margin: "auto", marginTop: 64 }}>
-        {safeAddress?<div style={{float:"right", padding:4, cursor:"pointer", fontSize:28}} onClick={()=>{
-          setSafeAddress("")
-        }}>
-          x
-        </div>:""}
+        {safeAddress ? (
+          <div
+            style={{ float: "right", padding: 4, cursor: "pointer", fontSize: 28 }}
+            onClick={() => {
+              setSafeAddress("")
+            }}
+          >
+            x
+          </div>
+        ) : (
+          ""
+        )}
 
-        <div style={{padding:64}}>
-          {safeInfo}
-        </div>
+        <div style={{ padding: 64 }}>{safeInfo}</div>
         <h2>Result dependent payment</h2>
-
-
 
         <h2>Gnosis Transaction Initiation</h2>
         <h5>Enter Selector and Params only if the to address is a contract address</h5>
         <Divider />
         <div style={{ margin: 8 }}>
-          <Input placeholder="Enter To Address"
-            onChange={async (e) => {
+          <Input
+            placeholder="Enter To Address"
+            onChange={async e => {
               setTo(e.target.value)
             }}
           />
@@ -177,38 +202,41 @@ export default function AdminView({
             placeholder="Enter Tx Value"
             onChange={value => {
               value = ethers.utils.parseEther(value.toString())
-              setValue(value);
+              setValue(value)
             }}
           />
 
-          <Input placeholder="Enter Selector i.e add(uint, uint)"
-            onChange={async (e) => {
+          <Input
+            placeholder="Enter Selector i.e add(uint, uint)"
+            onChange={async e => {
               setSelector(e.target.value)
             }}
           />
 
-          <Input placeholder="Enter arguments separated by ,"
-            onChange={async (e) => {
-              setParams(e.target.value.split(','))
+          <Input
+            placeholder="Enter arguments separated by ,"
+            onChange={async e => {
+              setOwners(e.target.value.split(","))
             }}
           />
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
-              if (selector !== '' && params.length > 0) {
-                const abi = [
-                  "function " + selector
-                ];
-                const index = selector.indexOf('(');
+              if (selector !== "" && params.length > 0) {
+                const abi = ["function " + selector]
+                const index = selector.indexOf("(")
                 const fragment = selector.substring(0, index)
 
-                const iface = new ethers.utils.Interface(abi);
+                const iface = new ethers.utils.Interface(abi)
                 for (let i = 0; i < params.length; i++) {
-                  if (iface.fragments[0].inputs[i].baseType.includes('uint') || iface.fragments[0].inputs[i].baseType.includes('int')) {
+                  if (
+                    iface.fragments[0].inputs[i].baseType.includes("uint") ||
+                    iface.fragments[0].inputs[i].baseType.includes("int")
+                  ) {
                     params[i] = parseInt(params[i])
                   }
                 }
-                const data = iface.encodeFunctionData(fragment, params);
+                const data = iface.encodeFunctionData(fragment, params)
                 setData(data)
               }
 
@@ -217,8 +245,8 @@ export default function AdminView({
                 [id]: {
                   multiSendAddress: safeAddress,
                   safeMasterCopyAddress: safeAddress,
-                  safeProxyFactoryAddress: safeAddress
-                }
+                  safeProxyFactoryAddress: safeAddress,
+                },
               }
 
               const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
@@ -226,92 +254,119 @@ export default function AdminView({
               const partialTx = {
                 to,
                 data,
-                value: value.toString()
+                value: value.toString(),
               }
 
               const safeTransaction = await safeSdk.createTransaction(partialTx)
               await safeSdk.signTransaction(safeTransaction)
 
-
               const hash = await safeSdk.getTransactionHash(safeTransaction)
-              await serviceClient.proposeTransaction(safeAddress, safeTransaction.data,  hash, safeTransaction.signatures.get(address.toLowerCase()))
+              await serviceClient.proposeTransaction(
+                safeAddress,
+                safeTransaction.data,
+                hash,
+                safeTransaction.signatures.get(address.toLowerCase()),
+              )
             }}
           >
             Sign Transaction
           </Button>
-
         </div>
       </div>
       <Divider />
       <div style={{ margin: 8 }}>
-        {
-          transactions.length > 0 && transactions.map((transaction, index) => (
+        {transactions.length > 0 &&
+          transactions.map((transaction, index) => (
             <div>
-              <p>To: {transaction.to.substring(0, 6) + "......" + transaction.to.substring(transaction.to.length - 7, transaction.to.length - 1)}</p>
-              <p>Data: {transaction.data.substring(0, 6) + "......" + transaction.data.substring(transaction.data.length - 7, transaction.data.length - 1)}</p>
+              <p>
+                To:{" "}
+                {transaction.to.substring(0, 6) +
+                  "......" +
+                  transaction.to.substring(transaction.to.length - 7, transaction.to.length - 1)}
+              </p>
+              <p>
+                Data:{" "}
+                {transaction.data.substring(0, 6) +
+                  "......" +
+                  transaction.data.substring(transaction.data.length - 7, transaction.data.length - 1)}
+              </p>
               <p>Value: {transaction.value / 1e18} ETH</p>
-              {owners.includes(address) && currentThreshold[index] >= threshold && <Button
-                style={{ marginTop: 8 }}
-                onClick={async () => {
-                  const id = await ethAdapter.getChainId()
-                  const contractNetworks = {
-                    [id]: {
-                      multiSendAddress: safeAddress,
-                      safeMasterCopyAddress: safeAddress,
-                      safeProxyFactoryAddress: safeAddress
+              {owners.includes(address) && currentThreshold[index] >= threshold && (
+                <Button
+                  style={{ marginTop: 8 }}
+                  onClick={async () => {
+                    const id = await ethAdapter.getChainId()
+                    const contractNetworks = {
+                      [id]: {
+                        multiSendAddress: safeAddress,
+                        safeMasterCopyAddress: safeAddress,
+                        safeProxyFactoryAddress: safeAddress,
+                      },
                     }
-                  }
-                  const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
-                  const safeSdk2 = await safeSdk.connect({ ethAdapter, safeAddress })
-                  console.log(transaction)
+                    const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
+                    const safeSdk2 = await safeSdk.connect({ ethAdapter, safeAddress })
+                    console.log(transaction)
 
-                  const safeTransactionData = {
-                    to: transaction.to,
-                    value: transaction.value,
-                    data: transaction.data || '0x',
-                    operation: transaction.operation,
-                    safeTxGas: transaction.safeTxGas,
-                    baseGas: transaction.baseGas,
-                    gasPrice: Number(transaction.gasPrice),
-                    gasToken: transaction.gasToken,
-                    refundReceiver: transaction.refundReceiver,
-                    nonce: transaction.nonce
-                  }
-                  const safeTransaction = await safeSdk.createTransaction(safeTransactionData)
-                  if (transaction.confirmations) {
-                    for(let i = 0; i < transaction.confirmations?.length; i++) {
-                      const confirmation = transaction.confirmations[i]
-                      const signature = new EthSignSignature(confirmation.owner, confirmation.signature)
-                      await safeTransaction.addSignature(signature)
+                    const safeTransactionData = {
+                      to: transaction.to,
+                      value: transaction.value,
+                      data: transaction.data || "0x",
+                      operation: transaction.operation,
+                      safeTxGas: transaction.safeTxGas,
+                      baseGas: transaction.baseGas,
+                      gasPrice: Number(transaction.gasPrice),
+                      gasToken: transaction.gasToken,
+                      refundReceiver: transaction.refundReceiver,
+                      nonce: transaction.nonce,
                     }
-                  }
-                  const executeTxResponse = await safeSdk2.executeTransaction(safeTransaction)
-                  const receipt = executeTxResponse.transactionResponse && (await executeTxResponse.transactionResponse.wait())
-                  console.log(receipt);
-                }}>Execute TX</Button>}
-              {owners.includes(address) && !transaction.signers.includes(address) && currentThreshold[index] < threshold && <Button
-                style={{ marginTop: 8 }}
-                onClick={async () => {
-                  const id = await ethAdapter.getChainId()
-                  const contractNetworks = {
-                    [id]: {
-                      multiSendAddress: safeAddress,
-                      safeMasterCopyAddress: safeAddress,
-                      safeProxyFactoryAddress: safeAddress
+                    const safeTransaction = await safeSdk.createTransaction(safeTransactionData)
+                    if (transaction.confirmations) {
+                      for (let i = 0; i < transaction.confirmations?.length; i++) {
+                        const confirmation = transaction.confirmations[i]
+                        const signature = new EthSignSignature(confirmation.owner, confirmation.signature)
+                        await safeTransaction.addSignature(signature)
+                      }
                     }
-                  }
-                  const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
-                  const hash = transaction.safeTxHash;
-                  const signature = await safeSdk.signTransactionHash(hash);
-                  await serviceClient.confirmTransaction(hash, signature.data)
-                }}
-              >
-                Sign TX</Button>}
+                    const executeTxResponse = await safeSdk2.executeTransaction(safeTransaction)
+                    const receipt =
+                      executeTxResponse.transactionResponse && (await executeTxResponse.transactionResponse.wait())
+                    console.log(receipt)
+                  }}
+                >
+                  Execute TX
+                </Button>
+              )}
+              {owners.includes(address) &&
+                !transaction.signers.includes(address) &&
+                currentThreshold[index] < threshold && (
+                  <Button
+                    style={{ marginTop: 8 }}
+                    onClick={async () => {
+                      const id = await ethAdapter.getChainId()
+                      const contractNetworks = {
+                        [id]: {
+                          multiSendAddress: safeAddress,
+                          safeMasterCopyAddress: safeAddress,
+                          safeProxyFactoryAddress: safeAddress,
+                        },
+                      }
+                      const safeSdk = await Safe.create({ ethAdapter, safeAddress, contractNetworks })
+                      const hash = transaction.safeTxHash
+                      const signature = await safeSdk.signTransactionHash(hash)
+                      await serviceClient.confirmTransaction(hash, signature.data)
+                    }}
+                  >
+                    Sign TX
+                  </Button>
+                )}
             </div>
-          ))
-        }
+          ))}
       </div>
-      <div style={{padding:64,margin:64}}><a href="https://github.com/austintgriffith/scaffold-eth/tree/gnosis-starter-kit" target="_blank">🏗</a></div>
+      <div style={{ padding: 64, margin: 64 }}>
+        <a href="https://github.com/austintgriffith/scaffold-eth/tree/gnosis-starter-kit" target="_blank">
+          🏗
+        </a>
+      </div>
     </div>
-  );
+  )
 }
